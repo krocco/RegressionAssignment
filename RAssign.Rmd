@@ -1,0 +1,99 @@
+---
+title: "Regression Models Course Project"
+author: Michael Crocco
+output: 
+  html_document:
+    keep_md: true
+---
+
+##Motor Trend Article
+###Transmission Specification and Fuel Economy
+
+###Executive Summary:
+
+An analysis of Automatic vs Manual Transmissions and their influence on fuel mileage is conducted.
+It is found that while A/T vehicles have a tendancy toward higher fuel consumption.
+However, it is also found, that there are other contributors to higher fuel consumption.
+Specifically, engine power and vehicle weight are large contributors.
+On the basis of transmission alone, it is found that a manual transmission is worth approximately 6% increased mileage.
+
+
+Data is available for 32 cars from the current model year (1973-1974)
+
+``` {r exploration}
+data(mtcars); require(stats); require(graphics)
+pairs(mtcars, panel = panel.smooth, main = "MotorTrend Cars Data")
+```
+
+Fuel Economy ($mpg$) appears to have some relationship with Transmission Type ($am$). 
+Note: $am$ is binary and 0 represents automatic (1 is manual). 
+So, on the surface, it would appear that manual vehicles have slightly higher $mpg$ (fuel economy).
+Note also that manual transmission vehicles have an inverse relationship with weight ($wt$)(they tend to weigh less than AT cars), they tend to have more gears, higher final drive ratios, lower horsepower, smaller displacement, and fewer cylinders. All of these factors should, in theory, contribute to the improvement in fuel economy.
+
+##Explore the simple relationship between fuel economy and transmission
+``` {r boxplot}
+boxplot(mpg ~ am, data = mtcars, xlab = "0: A/T   1: M/T", ylab = "mpg")
+```
+
+The boxplot seems to indicate a reasonable level of separation of fuel economy between manual and automatics.
+
+##Simple Regression
+A simple linear regression is conducted:
+
+``` {r simple regression}
+fit <- lm(mpg ~ am, mtcars)
+summary(fit)$coef
+```
+
+The result of our simple linear model show that the fuel economy of an A/T vehicle is 17mpg, and that moving to an M/T should result in an increase of 7mpg (to 24mpg).
+The p value for the slope (change in mpg per change from A/T to M/T) is less than the 95% confidence interval threshold of 0.005n (at 0.0002), so we would reject the null hypothesis that there is no difference in fuel economy between transmissions.
+
+
+##Multivariable Regression and Variance Inflation Factors
+Multiple nested models are created, and an Analysis of Variance Table is generated.
+
+``` {r multivariable regression}
+fit2 <- lm(mpg ~ am + cyl, mtcars)
+fit3 <- lm(mpg ~ am + cyl + disp, mtcars)
+fit4 <- lm(mpg ~ am + cyl + disp + hp, mtcars)
+fit5 <- lm(mpg ~ am + cyl + disp + hp + drat, mtcars)
+fit6 <- lm(mpg ~ am + cyl + disp + hp + drat + wt, mtcars)
+fit7 <- lm(mpg ~ am + cyl + disp + hp + drat + wt + qsec, mtcars)
+fit8 <- lm(mpg ~ am + cyl + disp + hp + drat + wt + qsec + vs, mtcars)
+fit9 <- lm(mpg ~ am + cyl + disp + hp + drat + wt + qsec + vs + gear, mtcars)
+fit10 <- lm(mpg ~ am + cyl + disp + hp + drat + wt + qsec + vs + gear + carb, mtcars)
+anova(fit, fit2, fit3, fit4, fit5, fit6, fit7, fit8, fit9, fit10)
+```
+
+According to the nested analysis, additional factors we should consider are: number of cylinders, horsepower, and weight.
+It is expected, however, that horsepower and number of cylinders are also interdependent. 
+
+``` {r}
+require(car)
+semiFinalFit <- lm(mpg ~ am + cyl + hp + wt, mtcars)
+vif(semiFinalFit)
+```
+
+Indeed, number of cylinders can likely be dropped from the model as it has high Variance Inflation Factor
+
+##Final Regression Model - Diagnosis
+
+``` {r final}
+fitfinal <- lm(mpg ~ am + hp + wt, mtcars)
+par(mfrow = c(2,2))
+plot(fitfinal)
+```
+
+The model is suitable.
+
+``` {r summarize}
+summary(fitfinal)$coef
+```
+
+Our final model of fuel economy in mpg is:
+
+   $mpg = 34 + 2.08am - 0.04hp - 2.88wt$
+   
+with am as AT: 0, or MT: 1; hp in horsepower; wt in 1000lb units
+
+In other words, holding other variables constant, a manual car should get $2.08$ more mpg than an automatic. This is approximately 6% efficiency improvement.
